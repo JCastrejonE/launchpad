@@ -1,0 +1,48 @@
+{
+  "name": "@launchpad/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "rm -rf dist && tsc -p tsconfig.test.json && node --test dist/*.test.js"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.11",
+    "@ai-sdk/react": "^4.0.20",
+    "@assistant-ui/react": "^0.14.27",
+    "@base-ui/react": "^1.7.0",
+    "@launchpad/agents": "workspace:*",
+    "@launchpad/db": "workspace:^",
+    "@launchpad/fleet-hostinger": "workspace:*",
+    "@launchpad/github": "workspace:*",
+    "@launchpad/pipeline": "workspace:*",
+    "@pierre/diffs": "^1.3.4",
+    "@streamdown/code": "^1.1.1",
+    "@tabler/icons-react": "^3.46.0",
+    "@temporalio/client": "^1.11.0",
+    "ai": "^7.0.19",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.454.0",
+    "next": "^15.0.0",
+    "next-auth": "5.0.0-beta.32",
+    "pg": "^8.22.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "streamdown": "^2.5.0",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.6.0"
+  }
+}

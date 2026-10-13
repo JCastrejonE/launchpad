@@ -1,0 +1,9 @@
+[
+  {
+    "state": "success",
+    "context": "continuous-integration/other",
+    "description": "Some other reporter",
+    "target_url": null,
+    "updated_at": "2026-08-03T20:00:00Z"
+  }
+]

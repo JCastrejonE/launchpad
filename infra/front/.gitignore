@@ -1,0 +1,7 @@
+node_modules/
+.next/
+.env*.local
+# Spec 0188 B: `next build` regenerates this on every build, so a committed copy
+# is dirt the run's own CI creates — which is what failed `spec-autopartes-0001`
+# at teardown. Next's own template ignores it for the same reason.
+next-env.d.ts

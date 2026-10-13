@@ -1,0 +1,22 @@
+# Temporal worker (packages/pipeline) — spec 0125 step D. Install to
+# /etc/systemd/system/launchpad-worker.service.
+#
+# This is the process that runs pipeline activities: git worktrees, agent
+# sessions, fleet SSH. It needs the repo checkout on its own filesystem, which
+# is why web and worker share this host (spec 0125's checkout-on-box decision).
+[Unit]
+Description=Launchpad pipeline worker (Temporal)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=launchpad
+Group=launchpad
+WorkingDirectory=/srv/launchpad/repo/packages/pipeline
+EnvironmentFile=/etc/launchpad/launchpad.env
+ExecStart=/usr/bin/node dist/worker.js
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

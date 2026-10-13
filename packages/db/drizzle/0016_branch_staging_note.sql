@@ -1,0 +1,12 @@
+-- Spec 0195 B: why a branch's last staging op failed, where a person can read it.
+--
+-- Spec 0192 B made a failed front stop lying — the row says `failed` and writes
+-- no attestation. What it still could not say is WHY, so the reviewer's only
+-- move was to press "Reintentar staging" and hope. The reason existed the whole
+-- time, in `journalctl -u launchpad-worker` on the app host, which is not a
+-- thing the five people about to use this can do.
+--
+-- Set when a staging deploy fails or its front does not build; CLEARED on
+-- success and on destroy, because a stale reason under a healthy environment is
+-- its own kind of lie.
+ALTER TABLE "project_branches" ADD COLUMN IF NOT EXISTS "staging_note" text NOT NULL DEFAULT '';

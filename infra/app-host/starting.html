@@ -1,0 +1,57 @@
+<!doctype html>
+<!--
+  Shown by nginx when the app is not answering yet (spec 0125). Install to
+  /var/www/launchpad/_starting.html.
+
+  Why it exists: after a reboot, nginx is listening seconds before `next start`
+  is ready, and every request in that window returned a raw 502. The owner hit exactly
+  that gap during a hostname change and reasonably read it as "the site is
+  broken". A 502 says "something is wrong"; this says "starting, hold on", which
+  is the truth for those few seconds.
+
+  Static and dependency-free on purpose: it must render when the app, the
+  database and Temporal are all still down.
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Iniciando · Mission Control</title>
+    <!-- Reloads itself, so the page a visitor is already staring at becomes the
+         app as soon as it is up. No JS required. -->
+    <meta http-equiv="refresh" content="4" />
+    <style>
+      :root { color-scheme: dark light; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center;
+        background: #0b0d10; color: #e6e8eb;
+        font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      @media (prefers-color-scheme: light) {
+        body { background: #f7f8fa; color: #1b1f24; }
+        .card { border-color: #e3e6ea !important; background: #fff !important; }
+      }
+      .card {
+        max-width: 27rem; margin: 1.5rem; padding: 1.75rem 2rem;
+        border: 1px solid #232830; border-radius: 12px; background: #12151a;
+      }
+      h1 { margin: 0 0 .5rem; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+      p { margin: 0; opacity: .7; font-size: .875rem; }
+      .dot {
+        display: inline-block; width: .5rem; height: .5rem; margin-right: .5rem;
+        border-radius: 50%; background: #4f8cff; animation: pulse 1.4s ease-in-out infinite;
+      }
+      @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .25 } }
+      code { font-size: .8125rem; opacity: .55; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1><span class="dot"></span>Iniciando Mission Control</h1>
+      <p>
+        El servidor está arrancando. Esta página se recarga sola y desaparecerá en unos segundos.
+      </p>
+      <p style="margin-top: .75rem"><code>launchpad.example.com</code></p>
+    </div>
+  </body>
+</html>

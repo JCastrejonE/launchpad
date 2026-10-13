@@ -1,0 +1,12 @@
+[
+  {
+    "user": { "login": "owner" },
+    "state": "APPROVED",
+    "submitted_at": "2026-07-07T09:00:00Z"
+  },
+  {
+    "user": { "login": "owner" },
+    "state": "CHANGES_REQUESTED",
+    "submitted_at": "2026-07-07T09:30:00Z"
+  }
+]

@@ -1,0 +1,75 @@
+# Dev stack for the launchpad itself (runs on your machine / launchpad VPS).
+# Client VPSes use infra/tenant/ templates instead.
+#
+# `restart: unless-stopped` on every service so the stack auto-recovers when
+# Docker Desktop restarts (update, quit, daemon hiccup). Without it the
+# containers stayed down after a Docker restart and the pipeline's worker/CI
+# hit ~2,900 ConnectionRefused mid-run — a false CI-red (see spec 0067 salvage).
+services:
+  temporal:
+    image: temporalio/auto-setup:1.25
+    restart: unless-stopped
+    ports: ["7233:7233"]
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=temporal-db
+    depends_on: [temporal-db]
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    depends_on: [temporal]
+
+  temporal-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=temporal
+    volumes: [temporal-db-data:/var/lib/postgresql/data]
+
+  launchpad-db:
+    image: postgres:16
+    restart: unless-stopped
+    ports: ["5433:5432"]
+    environment:
+      - POSTGRES_USER=launchpad
+      - POSTGRES_PASSWORD=launchpad
+      - POSTGRES_DB=launchpad
+    volumes: [launchpad-db-data:/var/lib/postgresql/data]
+
+  vault:
+    image: hashicorp/vault:1.17
+    restart: unless-stopped
+    ports: ["8200:8200"]
+    cap_add: [IPC_LOCK]
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=dev-only-token
+    command: server -dev
+
+  traefik:
+    image: traefik:v3.1
+    restart: unless-stopped
+    ports: ["80:80", "8081:8080"]
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # Paperclip (agent management: sessions, budgets, audit). MIT, self-hosted.
+  # See https://github.com/paperclipai/paperclip — pin a release in phase 2.
+  # paperclip:
+  #   image: <paperclip release image or local build>
+  #   ports: ["3100:3100"]
+
+volumes:
+  temporal-db-data:
+  launchpad-db-data:

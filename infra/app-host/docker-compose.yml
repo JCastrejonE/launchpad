@@ -1,0 +1,80 @@
+# The launchpad's OWN dependencies, on the app host (spec 0125 step D).
+# Client VPSes use infra/tenant/ instead; this is the control plane's own stack.
+#
+# Deliberately NOT infra/docker-compose.dev.yml, which is a laptop file:
+#   - no `vault` — ADR-005's central Vault was never built; spec 0076 shipped an
+#     encrypted `secrets` table instead, so a dev-mode Vault with a published
+#     root token would be a credential server for nothing.
+#   - `temporal-ui` IS here, still bound to 127.0.0.1 only. It ships with no
+#     authentication of any kind and its UI can terminate and reset workflows,
+#     so publishing it on 0.0.0.0 would be an unauthenticated kill switch for
+#     the pipeline. Since spec 0146 it is reachable in a browser at
+#     /temporal — through nginx, which refuses every request that does not
+#     carry an OWNER launchpad session (spec 0146). The port binding does not change: nginx
+#     talks to it over loopback, and nothing else can.
+#   - no dev `traefik` — nginx terminates TLS on this host (it was already
+#     installed and supervised; reuse beats adding a second ingress).
+#   - every published port bound to 127.0.0.1. Docker writes its own iptables
+#     rules and would otherwise publish PAST ufw: `ufw deny 5433` does not stop
+#     a container published on 0.0.0.0. The bind address is the actual control.
+#   - passwords come from the environment, so nothing here is a default.
+services:
+  temporal:
+    image: temporalio/auto-setup:1.25
+    restart: unless-stopped
+    ports: ["127.0.0.1:7233:7233"]
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:?required}
+      - POSTGRES_SEEDS=temporal-db
+    depends_on: [temporal-db]
+
+  temporal-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=temporal
+      - POSTGRES_PASSWORD=${TEMPORAL_DB_PASSWORD:?required}
+    volumes: [temporal-db-data:/var/lib/postgresql/data]
+
+  # Workflow inspector. LOOPBACK ONLY, and that is not a preference: this UI has
+  # no login, and it can terminate, cancel and reset workflows. On 0.0.0.0 it
+  # would be an unauthenticated kill switch for the pipeline, in front of a box
+  # that is otherwise only reachable behind a session.
+  #
+  # Reachable two ways, both of which keep the port on loopback:
+  #   - https://launchpad.example.com/temporal — nginx `auth_request` checks for
+  #     an OWNER session on EVERY request, including assets (spec 0146).
+  #   - a tunnel, when nginx or the app is down and you need Temporal anyway:
+  #       ssh -i ~/.ssh/fleet_key -N -L 8080:127.0.0.1:8080 root@203.0.113.10
+  #     then open http://localhost:8080 (PUBLIC_PATH means /temporal there too).
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    restart: unless-stopped
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      # Spec 0146: the SPA builds its own asset and API URLs from this prefix,
+      # so it must match the nginx location or every asset 404s behind the
+      # proxy. It applies to the tunnel too — the UI lives at /temporal there.
+      - TEMPORAL_UI_PUBLIC_PATH=/temporal
+      - TEMPORAL_CORS_ORIGINS=https://launchpad.example.com
+    depends_on: [temporal]
+
+  # 5433, matching the dev compose and .env.example, so DATABASE_URL is the
+  # same string in both places and nobody has to remember a second port.
+  launchpad-db:
+    image: postgres:16
+    restart: unless-stopped
+    ports: ["127.0.0.1:5433:5432"]
+    environment:
+      - POSTGRES_USER=launchpad
+      - POSTGRES_PASSWORD=${LAUNCHPAD_DB_PASSWORD:?required}
+      - POSTGRES_DB=launchpad
+    volumes: [launchpad-db-data:/var/lib/postgresql/data]
+
+volumes:
+  temporal-db-data:
+  launchpad-db-data:

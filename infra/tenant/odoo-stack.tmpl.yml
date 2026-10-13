@@ -1,0 +1,93 @@
+# Tenant stack template — rendered per deploy by @launchpad/fleet-hostinger.
+# NOTE: never write a placeholder in its dollar-brace form inside a comment.
+# Rendering is a blunt split/join over the WHOLE file, so a comment that names a
+# variable that way is substituted too — and a MULTI-LINE value
+# (TLS_EXTRA_LABELS) then breaks out of the comment
+# and becomes top-level YAML. That shipped: probe0161's first provisioning died
+# with `docker compose up: top-level object must be a mapping`. Name variables
+# without the braces; `renderStack` now refuses a multi-line value that is not at
+# the start of a line.
+# Vanilla stock Odoo deploy (spec 0046): stock `odoo:${ODOO_VERSION}` +
+# `postgres:16` + a fresh tenant DB (base-installed) — no snapshot/seed
+# restore, no neutralize. The odoo service mounts the stack's own
+# `./addons` dir read-only at /mnt/extra-addons (spec 0097) — that's the
+# image's own addons_path (verified against the real odoo:18 image), empty
+# unless a deploy renders custom addon files into it (e.g. company_theme),
+# so an empty mount changes nothing for a tenant that gets none. The
+# compose PROJECT + named volumes are tenant-scoped via `-p <project>`
+# (see `composeProjectName` in `stack.ts`), so N tenants coexist on one
+# VPS with isolated db+odoo pairs.
+# Variables: ${TENANT}, ${STACK}   (prod today; staging/spec-<id> reserved
+# for a future add), ${ODOO_VERSION} (17|18|19),
+# ${ROUTER_HOST} (the Traefik Host() rule — `<stack>.<tenant>.<domain>` by
+# default, or an override like `<slug>.odoo.example.com`, see `renderStack`),
+# TLS_EXTRA_LABELS (empty, or the ACME cert-resolver labels — spec 0148
+# phase C), ${DB_NAME} (spec 0014 plan step 3 — see `tenantDbName`), plus
+# secrets injected at deploy time from Vault (never stored here).
+#
+# ${DB_NAME}: the official odoo image's entrypoint passes any CLI args given
+# via `command:` straight to `odoo` alongside the db_host/db_user/db_password
+# it derives from HOST/USER/PASSWORD. Pinning `-d ${DB_NAME} --db-filter=^${DB_NAME}$`
+# here is the docker-compose equivalent of setting `db_name`/`dbfilter` in
+# odoo.conf: the stack serves that DB directly on /web/login instead of the
+# multi-DB selector. Stable across 17/18/19 (the entrypoint contract hasn't
+# changed across those releases). The trailing `$` is written `$$` below
+# because docker compose itself interpolates `$`/`${...}` when it parses this
+# file — `$$` is compose's own escape for a literal `$`, so the `odoo`
+# process actually receives a single `$` (the regex end-anchor).
+services:
+  odoo:
+    image: odoo:${ODOO_VERSION}
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=${ODOO_DB_PASSWORD} # from Vault tenants/${TENANT}
+    command:
+      - "-d"
+      - "${DB_NAME}"
+      - "--db-filter=^${DB_NAME}$$"
+    volumes:
+      - odoo-filestore:/var/lib/odoo
+      - ./addons:/mnt/extra-addons:ro
+      # spec 0121: replaces the image's own /etc/odoo/odoo.conf, whose
+      # `admin_passwd` is commented out — so without this the MASTER password
+      # (create/drop/duplicate/backup at /web/database/manager) is Odoo's default
+      # on a host we deliberately expose. There is no CLI flag for it, which is why
+      # this is a mounted file rather than another `command:` arg. The rendered
+      # file repeats addons_path and data_dir verbatim from the image's config,
+      # since replacing it wholesale would otherwise break the extra-addons mount
+      # and move the filestore.
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${TENANT}-${STACK}.rule=Host(`${ROUTER_HOST}`)
+      # spec 0120: without `tls`, this router cannot serve the `websecure`
+      # entrypoint at all — an HTTPS request matched NO router, so Traefik
+      # answered 404 with its default cert, while the whole `web` entrypoint is
+      # redirected to `websecure`. Between them, every tenant stack on the fleet
+      # was unreachable through the ingress for months while Odoo itself was
+      # healthy on :8069. With no ACME `certresolver` this serves Traefik's
+      # default self-signed cert (a browser warning, not a closed door) — the
+      # behaviour for every `.test` tenant, which cannot resolve so ACME could
+      # never succeed. spec 0148 phase C: when a deploy targets a resolving
+      # domain (`<slug>.odoo.example.com`), `renderStack`'s `certResolver` fills
+      # TLS_EXTRA_LABELS with the ACME `tls.certresolver` + `websecure`
+      # entrypoint labels (staging's pattern) so that stack gets a real cert.
+      - traefik.http.routers.${TENANT}-${STACK}.tls=true
+${TLS_EXTRA_LABELS}      - traefik.http.services.${TENANT}-${STACK}.loadbalancer.server.port=8069
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=${ODOO_DB_PASSWORD}
+      - POSTGRES_DB=postgres
+    volumes:
+      - odoo-db:/var/lib/postgresql/data
+
+volumes:
+  odoo-filestore:
+  odoo-db:

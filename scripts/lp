@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+#
+# lp — the ONE way in (spec 0229).
+#
+# There were four ways to "run the project" and none was mandatory: preflight.sh,
+# gate.sh, runCi, and `pnpm -r <anything>`. On 2026-08-19 four validators were
+# built and hung on gate.sh, which NOTHING triggers — Actions is billing-blocked
+# and runCi deliberately does not call it. The plan's own first paragraph says a
+# lint with nowhere to run is a convention, and it happened anyway.
+#
+# The fix is not another validator. It is that validation becomes a property of
+# the single path everything takes — the same move as a required parameter beating
+# an optional flag, which is the only technique that worked that day.
+#
+# This dispatches and rewrites nothing. preflight.sh is 736 hard-won lines
+# (specs 0007/0008) and works.
+#
+#   lp start          bring the project up: services, .env, worker, web
+#   lp gate           the definition of green. NEEDS NO SERVICES, and this
+#                     enforces that by scrubbing app/service variables first
+#   lp check          gate minus the slow apps/web build — a strict subset, and
+#                     it says so in its output
+#   lp deployed <ref> does the box SERVE a tree containing <ref>?
+#
+# There is deliberately NO default mode: a default is how someone runs `start`
+# believing they ran `gate`.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+usage() {
+  cat >&2 <<'TXT'
+lp — the one way in (spec 0229)
+
+  lp start [args]      services, .env, worker, web        (delegates to preflight.sh)
+  lp gate  [--no-web]  the definition of green, hermetic   (delegates to gate.sh)
+  lp check             gate minus the apps/web build       (a declared SUBSET)
+  lp deployed <ref>    does the box serve a tree with <ref>?
+
+No default mode, on purpose: a default is how someone runs `start` believing
+they ran `gate`.
+TXT
+  exit 2
+}
+
+# Variables that name a service or a secret. `lp gate` runs WITHOUT them, so a
+# check that quietly starts depending on one fails the day it is introduced
+# rather than the day CI runs in a container with nothing (spec 0227 C's
+# isolation is only true while this holds). Not a full `env -i`: pnpm still needs
+# PATH, HOME and friends.
+scrub_and_run() {
+  env -u DATABASE_URL -u AUTH_SECRET -u GITHUB_TOKEN -u TEMPORAL_ADDRESS \
+      -u LAUNCHPAD_SECRET_MASTER_KEY -u LAUNCHPAD_REPO_ROOT \
+      -u CLAUDE_CODE_OAUTH_TOKEN -u ANTHROPIC_API_KEY \
+      "$@"
+}
+
+MODE="${1:-}"; [[ -n "$MODE" ]] || usage
+shift || true
+
+case "$MODE" in
+  start)
+    exec scripts/preflight.sh "$@"
+    ;;
+  gate)
+    scrub_and_run scripts/gate.sh "$@"
+    exit $?
+    ;;
+  check)
+    printf '\033[33mlp check — PARTIAL: gate minus the apps/web production build.\033[0m\n'
+    printf '   A green here is not "green". Run `lp gate` before a PR or a promote.\n'
+    scrub_and_run scripts/gate.sh --no-web
+    exit $?
+    ;;
+  deployed)
+    REF="${1:-HEAD}"
+    HOST="${DEPLOY_HOST:-203.0.113.10}"
+    KEY="${DEPLOY_KEY:-$HOME/.ssh/fleet_key}"
+    want="$(git rev-parse --verify --quiet "$REF")" || { printf 'lp: %s does not resolve\n' "$REF" >&2; exit 2; }
+    SSH=(ssh -o ConnectTimeout=15 -o BatchMode=yes -i "$KEY" "root@${HOST}")
+    head="$("${SSH[@]}" 'git -C /srv/launchpad/repo rev-parse HEAD')" || { printf 'lp: cannot reach %s\n' "$HOST" >&2; exit 2; }
+    built="$("${SSH[@]}" 'cat /srv/launchpad/repo/apps/web/.next/BUILD_COMMIT 2>/dev/null || true')"
+    printf '   ref      %s\n   box HEAD %s\n   served   %s\n' "${want:0:8}" "${head:0:8}" "${built:0:8}"
+    [[ -n "$built" ]] || { printf '\033[31mNO BUILD_COMMIT on the box — cannot tell what is served.\033[0m\n' >&2; exit 1; }
+    # The question is not "is the commit present" but "is it in the tree that is
+    # SERVING". Those diverged on 2026-08-19: HEAD moved after the build.
+    if git merge-base --is-ancestor "$want" "$built" 2>/dev/null; then
+      printf '\033[32mDEPLOYED: the served build contains %s.\033[0m\n' "${want:0:8}"
+      exit 0
+    fi
+    printf '\033[31mNOT DEPLOYED: the served build (%s) does not contain %s.\033[0m\n' "${built:0:8}" "${want:0:8}" >&2
+    printf 'Anything you changed in agents/ or packages/ is NOT live for a run.\n' >&2
+    exit 1
+    ;;
+  -h|--help|help) usage ;;
+  *) printf 'lp: unknown mode %s\n\n' "$MODE" >&2; usage ;;
+esac

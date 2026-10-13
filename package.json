@@ -1,0 +1,19 @@
+{
+  "name": "odoo-launchpad",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "start": "scripts/lp start",
+    "gate": "scripts/lp gate",
+    "check": "scripts/lp check",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "dev:infra": "docker compose -f infra/docker-compose.dev.yml up -d"
+  },
+  "devDependencies": {
+    "puppeteer": "^23.0.0",
+    "typescript": "^5.6.0"
+  }
+}

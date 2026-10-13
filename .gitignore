@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.next/
+next-env.d.ts
+.env
+# Pre-Vault tenant secret store (spec 0014) — never commit tenant dbPasswords.
+# Default lives at ~/.launchpad/ (repo-external); this guards any in-repo override.
+.launchpad/
+tenant-secrets.json
+*.tsbuildinfo
+.DS_Store
+# .claude/ is team-shared (skills, commands, agents). Ignore only the per-user
+# and transient bits; everything else under .claude/ is committed.
+.claude/settings.local.json
+.claude/worktrees/
+
+.pnpm-store/
+.preflight/
+# Transient impeccable skill state at repo root (created by context.mjs on
+# setup runs). Root-anchored so the tracked apps/web/.impeccable/ is unaffected.
+/.impeccable/
+# Per-run git worktrees (spec 0017): every spec run gets its own checkout at
+# .worktrees/spec-NNNN so the primary checkout never leaves main. Never tracked.
+.worktrees/

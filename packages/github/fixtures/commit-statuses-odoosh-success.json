@@ -1,0 +1,16 @@
+[
+  {
+    "state": "success",
+    "context": "ci/odoo.sh",
+    "description": "Build succeeded",
+    "target_url": "https://acme.odoo.com/paas#/build/1234",
+    "updated_at": "2026-08-03T20:00:00Z"
+  },
+  {
+    "state": "pending",
+    "context": "ci/odoo.sh",
+    "description": "Build started",
+    "target_url": "https://acme.odoo.com/paas#/build/1234",
+    "updated_at": "2026-08-03T19:58:00Z"
+  }
+]

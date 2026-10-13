@@ -1,0 +1,25 @@
+{
+  "id": 1001,
+  "firewall_group_id": null,
+  "subscription_id": "sub_abc123",
+  "data_center_id": 6,
+  "plan": "hostingercom-vps-kvm2-usd-1m",
+  "hostname": "srv1001.hstgr.cloud",
+  "state": "running",
+  "actions_lock": "unlocked",
+  "cpus": 2,
+  "memory": 8192,
+  "disk": 102400,
+  "bandwidth": 3145728,
+  "ns1": null,
+  "ns2": null,
+  "ipv4": [{ "id": 501, "address": "203.0.113.10", "ptr": "srv1001.hstgr.cloud" }],
+  "ipv6": [{ "id": 502, "address": "2001:db8::1", "ptr": null }],
+  "template": {
+    "id": 1013,
+    "name": "Ubuntu 22.04 with Docker",
+    "description": "Ubuntu 22.04 LTS preinstalled with Docker and Docker Compose",
+    "documentation": "https://www.hostinger.com/tutorials/vps/how-to-set-up-docker"
+  },
+  "created_at": "2026-05-01T12:00:00+00:00"
+}

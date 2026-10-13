@@ -1,0 +1,35 @@
+{
+  "name": "@launchpad/pipeline",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./watcher-playbook": "./dist/watcher-playbook.js",
+    "./procesos-modules": "./dist/procesos-modules.js"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "test": "rm -rf dist && tsc && node --test dist/*.test.js",
+    "worker": "node dist/worker.js"
+  },
+  "dependencies": {
+    "@launchpad/agents": "workspace:*",
+    "@launchpad/db": "workspace:*",
+    "@launchpad/fleet-hostinger": "workspace:*",
+    "@launchpad/github": "workspace:*",
+    "@temporalio/activity": "^1.11.0",
+    "@temporalio/client": "^1.11.0",
+    "@temporalio/common": "^1.11.0",
+    "@temporalio/worker": "^1.11.0",
+    "@temporalio/workflow": "^1.11.0"
+  },
+  "bin": {
+    "launchpad-pipeline": "dist/cli.js"
+  },
+  "devDependencies": {
+    "@temporalio/testing": "^1.11.0",
+    "typescript": "^5.6.0"
+  }
+}

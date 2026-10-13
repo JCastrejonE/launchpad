@@ -1,0 +1,6 @@
+{
+  "$comment": "Sandbox VPS allowlist (ADR-013). VPS ids listed here may receive automated SSH commands and destructive Hostinger API operations (wipe/recreate/restart/snapshot-delete) from Claude Code and fleet tooling WITHOUT per-action human confirmation. Every VPS NOT listed here is hard-refused for any mutating operation. Changes to this file are human commits only; agents must never edit it. HISTORY (spec 0125): an agent once ADDED a VPS id here on the owner's written instruction that the box was disposable; the next day the same agent REMOVED it, because inventorying the box first showed it was a box that turned out to host a live production ERP, with real business data and no other copy of some of its code. Nothing was destroyed and a verified backup was taken. The lesson this file now enforces: an entry here ASSERTS that a box is disposable, and authorisation is not evidence about a target — verify the contents before adding an id, not after.",
+  "sandboxVpsIds": [
+    100001
+  ]
+}

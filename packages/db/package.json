@@ -1,0 +1,25 @@
+{
+  "name": "@launchpad/db",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "test": "rm -rf dist && tsc && node --test dist/*.test.js",
+    "migrate": "tsc && node dist/cli-migrate.js",
+    "seed-owner": "tsc && node dist/cli-seed-owner.js",
+    "seed-user": "tsc && node dist/cli-seed-user.js",
+    "seed-projects": "tsc && node dist/cli-seed-projects.js"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5.6.0"
+  }
+}

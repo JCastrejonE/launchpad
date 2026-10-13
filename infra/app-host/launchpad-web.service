@@ -1,0 +1,26 @@
+# Mission Control web (apps/web) — spec 0125 step D. Install to
+# /etc/systemd/system/launchpad-web.service.
+#
+# `next start`, not `next dev`: dev inlines source for HMR (docs/VERIFICATION.md
+# #3) and serves a build nobody verified.
+[Unit]
+Description=Launchpad Mission Control (web)
+After=network-online.target docker.service launchpad-worker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=launchpad
+Group=launchpad
+WorkingDirectory=/srv/launchpad/repo/apps/web
+EnvironmentFile=/etc/launchpad/launchpad.env
+# Bound to loopback: nginx is the only thing that may reach it, so the app is
+# never exposed without TLS even if the vhost is misconfigured.
+ExecStart=/srv/launchpad/repo/apps/web/node_modules/.bin/next start -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=5
+# One instance, deliberately (spec 0125): git's index lock is per-checkout and
+# withRepoLock is an in-process mutex, so a second replica on this checkout
+# would race it. This limits replicas, NOT concurrent users.
+[Install]
+WantedBy=multi-user.target

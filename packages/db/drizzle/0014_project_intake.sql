@@ -1,0 +1,11 @@
+-- Spec 0191: keep the answers the wizard already asks for.
+--
+-- `/new` collects giro, headcount, processes, CFDI and brand, shows them on the
+-- confirm step, and `createProjectAction` never sent them — so "recorded only,
+-- context for a human" (the owner, 2026-08-12) described an intention, not the code.
+--
+-- Stored verbatim as an object of the wizard's own question ids. Not an input to
+-- provisioning: nothing selects Odoo modules from it. Its one consumer is the
+-- project's landing page, which until now was the same grey scaffold for a sushi
+-- restaurant, an auto-parts counter and a bakery.
+ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "intake" jsonb NOT NULL DEFAULT '{}'::jsonb;

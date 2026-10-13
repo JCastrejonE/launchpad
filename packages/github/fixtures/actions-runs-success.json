@@ -1,0 +1,7 @@
+{
+  "total_count": 2,
+  "workflow_runs": [
+    { "id": 101, "workflow_id": 9001, "status": "completed", "conclusion": "success" },
+    { "id": 102, "workflow_id": 9001, "status": "completed", "conclusion": "skipped" }
+  ]
+}

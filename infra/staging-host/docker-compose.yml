@@ -1,0 +1,122 @@
+# Launchpad STAGING stack — spec 0132, for 203.0.113.20 (VPS 100001).
+#
+# Deliberately NOT a copy of infra/app-host/docker-compose.yml. That box runs the
+# app as a host systemd unit behind nginx + certbot; this one cannot, and the
+# reason was measured rather than assumed (spec 0132):
+#
+#   - traefik (pid 1216) owns :80 and :443 there. nginx cannot bind them, and that
+#     Traefik also routes CUSTOMER tenant stacks — so we add a container to it and
+#     never touch its configuration.
+#   - its provider list is `--providers.docker=true` with NO file provider, so
+#     Traefik discovers containers ONLY. A `next start` on 127.0.0.1:3000 would be
+#     invisible to it. Hence: the app is a container with labels.
+#   - its ACME resolver is named `letsencrypt` (HTTP-01, and web→websecure
+#     redirection is already configured), so TLS costs us one label and one DNS
+#     record — no certbot, no cert files, no vhost.
+#
+# PORTS: nothing here publishes to the host except through Traefik. Spec 0125 paid
+# for that rule — Docker writes its own iptables chain and publishes PAST ufw, so a
+# `ports:` entry on 5432 or 7233 would be open to the internet. `expose:` keeps a
+# service reachable only on this compose network.
+#
+# Bring up with:  docker compose --env-file /etc/launchpad/staging.env up -d
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/staging-host/Dockerfile
+    restart: unless-stopped
+    env_file: [/etc/launchpad/staging.env]
+    environment:
+      # Inside the compose network, not the host's loopback.
+      TEMPORAL_ADDRESS: temporal:7233
+      NODE_ENV: production
+    expose: ["3000"]
+    networks: [staging, traefik]
+    depends_on: [launchpad-db, temporal]
+    labels:
+      - traefik.enable=true
+      # The router Traefik's docker provider discovers. `${LAUNCHPAD_STAGING_WEB_HOST}`
+      # comes from the env file so the hostname is configuration, not a rebuild.
+      - traefik.http.routers.launchpad-staging.rule=Host(`${LAUNCHPAD_STAGING_WEB_HOST}`)
+      - traefik.http.routers.launchpad-staging.entrypoints=websecure
+      - traefik.http.routers.launchpad-staging.tls.certresolver=letsencrypt
+      - traefik.http.services.launchpad-staging.loadbalancer.server.port=3000
+      # Traefik is on its own network; name it explicitly so the provider does not
+      # guess which of this container's two networks to route to.
+      - traefik.docker.network=${LAUNCHPAD_TRAEFIK_NETWORK}
+
+  # Same image, different command: the pipeline worker. It is the reason spec 0132
+  # decision 3 exists — it runs pipeline code, so its GITHUB_TOKEN must not be able
+  # to push to example-org/launchpad.
+  worker:
+    build:
+      context: ../..
+      dockerfile: infra/staging-host/Dockerfile
+    command: ["node", "packages/pipeline/dist/worker.js"]
+    restart: unless-stopped
+    env_file: [/etc/launchpad/staging.env]
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      NODE_ENV: production
+    networks: [staging]
+    depends_on: [launchpad-db, temporal]
+
+  # Staging's OWN control plane. Not a schema in production's database and not a
+  # second worker on production's Temporal: a staging worker polling `spec-pipeline`
+  # on production's server would steal production workflow tasks and run them with
+  # staging code (spec 0132 decision 4).
+  launchpad-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: launchpad
+      POSTGRES_PASSWORD: ${LAUNCHPAD_DB_PASSWORD}
+      POSTGRES_DB: launchpad
+    expose: ["5432"]
+    networks: [staging]
+    volumes: [launchpad-db-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U launchpad"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: temporalio/auto-setup:1.25
+    restart: unless-stopped
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD}
+      POSTGRES_SEEDS: temporal-db
+    expose: ["7233"]
+    networks: [staging]
+    depends_on: [temporal-db]
+
+  temporal-db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD}
+    expose: ["5432"]
+    networks: [staging]
+    volumes: [temporal-db-data:/var/lib/postgresql/data]
+
+  # No temporal-ui service. On the prod box it is bound to 127.0.0.1 and reached
+  # through an SSH tunnel; the same tunnel works here against `temporal:7233`
+  # without another container that ships with no authentication.
+
+networks:
+  staging:
+  # Traefik's existing network, created by ITS compose project — external so this
+  # stack joins it and never redefines it.
+  traefik:
+    external: true
+    name: ${LAUNCHPAD_TRAEFIK_NETWORK}
+
+volumes:
+  launchpad-db-data:
+  temporal-db-data:

@@ -1,0 +1,10 @@
+# Spec 0187 D: pnpm 11 refuses to run a dependency's build script until it is
+# approved per package, and `next build` (Next 15.5) shells its own
+# `pnpm install`, which exits 1 with ERR_PNPM_IGNORED_BUILDS when one is
+# pending. `sharp` is Next's image optimiser and always needs its build.
+#
+# Without this the FIRST CI run of every scaffolded project is red for a reason
+# that has nothing to do with the project: it cost `autopartes` two coder
+# iterations and a fixer session (commit 4fa9d39) before the loop could move.
+allowBuilds:
+  sharp: true

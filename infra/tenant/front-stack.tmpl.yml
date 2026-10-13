@@ -1,0 +1,60 @@
+# Next front stack template — rendered per odoo-next project by
+# NOTE: never write a placeholder in its dollar-brace form inside a comment.
+# Rendering is a blunt split/join over the WHOLE file, so a comment that names a
+# variable that way is substituted too — and a MULTI-LINE value
+# (TLS_EXTRA_LABELS) then breaks out of the comment
+# and becomes top-level YAML. That shipped: probe0161's first provisioning died
+# with `docker compose up: top-level object must be a mapping`. Name variables
+# without the braces; `renderStack` now refuses a multi-line value that is not at
+# the start of a line.
+# @launchpad/fleet-hostinger (spec 0148 phase D). One Traefik-routed container
+# built from the project's OWN repo (its root Dockerfile), serving the front at
+# ${ROUTER_HOST} (`<slug>.example.com`) and reaching its Odoo at ${ODOO_URL} (the
+# phase-C stack at `<slug>.odoo.example.com`).
+#
+# Deliberately mirrors odoo-stack.tmpl.yml's Traefik label style, NOT staging's
+# (infra/staging-host/docker-compose.yml): the odoo tenant stacks route on the
+# sandbox VPS with bare `traefik.*` labels and NO explicit network, so the box's
+# Traefik docker provider discovers this front container identically. `build:`
+# with `context: .` means the deploy path extracts the project checkout into the
+# stack dir first, so the repo's root Dockerfile is the build context.
+#
+# Variables: ${FRONT_NAME} (compose + Traefik router/service key, `<slug>-front`),
+# ROUTER_HOST (the Host() rule), ODOO_URL, FRONT_SLUG, TLS_EXTRA_LABELS (empty, or
+# the ACME cert-resolver labels — spec 0148, staging's `letsencrypt` pattern,
+# opt-in because ACME can only issue once phase B makes the name resolve),
+# ODOO_NETWORK_ATTACH + ODOO_NETWORK_BLOCK (spec 0173 A2: both empty for
+# production, which reaches its Odoo over the public name with a real cert; a
+# BRANCH front joins the Odoo stack's own network instead, because staging's
+# edge serves a self-signed cert that Node's fetch refuses. Two variables rather
+# than one because compose needs the service-level attach and the top-level
+# declaration, and this renderer is a blunt substitution with no conditionals.)
+services:
+  front:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - ODOO_URL=${ODOO_URL}
+      # spec 0169: the scaffold is copied verbatim, never templated, so anything
+      # tenant-specific has to arrive here as an env var.
+      - PROJECT_SLUG=${FRONT_SLUG}
+      # spec 0208: the read-only credentials the front authenticates with, so a
+      # page can read `product.template` instead of only `common.version`.
+      # Deliberately NOT prefixed `NEXT_PUBLIC_` — that prefix inlines a value
+      # into the browser bundle, and this is a password.
+      - ODOO_DB=${ODOO_DB}
+      - ODOO_USER=${ODOO_USER}
+      - ODOO_PASSWORD=${ODOO_PASSWORD}
+    expose:
+      - "3000"
+${ODOO_NETWORK_ATTACH}    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${FRONT_NAME}.rule=Host(`${ROUTER_HOST}`)
+      # Mirrors odoo-stack.tmpl.yml: `tls=true` alone serves Traefik's default
+      # self-signed cert; TLS_EXTRA_LABELS adds the ACME certresolver +
+      # websecure entrypoint when the deploy targets a resolving name.
+      - traefik.http.routers.${FRONT_NAME}.tls=true
+${TLS_EXTRA_LABELS}      - traefik.http.services.${FRONT_NAME}.loadbalancer.server.port=3000
+${ODOO_NETWORK_BLOCK}

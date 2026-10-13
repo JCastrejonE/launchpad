@@ -1,0 +1,9 @@
+[
+  {
+    "state": "failure",
+    "context": "ci/odoo.sh",
+    "description": "Build failed: module install error",
+    "target_url": "https://acme.odoo.com/paas#/build/1236",
+    "updated_at": "2026-08-03T20:10:00Z"
+  }
+]
