@@ -200,7 +200,7 @@ our stack suppresses it.
 The Agent SDK does execute multiple blocks sequentially even when they are emitted
 ([issue #438](https://github.com/anthropics/claude-agent-sdk-python/issues/438), closed as not
 planned) — but that only forfeits the tool-overlap saving. Emitting two tools in one turn would still
-save a **model round-trip**, and inference is 69–80% of session time (0106/0107), so it would have
+save a **model round-trip**, and inference is 69% of session time (0106, `docs/AGENT-PERFORMANCE.md`), so it would have
 been the bigger half. Worth wanting.
 
 So the question became: why do our agents never emit two? Answered by logging tool NAMES per turn —
@@ -228,6 +228,11 @@ smaller: the initializer issued **9 separate `Bash` calls**, several of which lo
 inspections that could be one command. That is "fewer, larger tool calls", not parallelism — and it
 trades against legibility, since one opaque combined command is harder to audit from a handoff than
 nine named ones.
+
+This replaces the earlier "hard SDK limit" reading in `docs/AGENT-PERFORMANCE.md` and
+`docs/VERIFICATION.md` #5. The role prompts in `agents/` (initializer, coder, fixer) still carry that
+earlier sentence, "This harness emits exactly ONE tool call per turn … Batching is not available to
+you"; they are kept as the agents saw them, and the setup bake-off ran them unchanged.
 
 Re-measure after any SDK upgrade: the harness is `/tmp/meas/measure3.mjs` in shape — inject a
 counting `queryFn` at `runAgentSession`'s existing test seam, log `tool_use` block names per

@@ -1,6 +1,6 @@
 # Setup bake-off
 
-*29 September 2026. One brief, six ways of running Claude Code, everything measured from transcripts and a headless browser rather than from the agents' own reports.*
+*29 September 2026. One brief, six ways of running Claude Code in seven runs (the dynamic workflow ran twice, headless and interactive), everything measured from transcripts and a headless browser rather than from the agents' own reports.*
 
 ## The setup
 
@@ -15,7 +15,7 @@ Every contender got the same brief, its own empty git repository, and the same c
 | C | Claude Code + gstack | installed by its own setup; `/office-hours` → `/autoplan` → build → `/review` → `/qa` → `/ship` |
 | D | Claude Code + ECC | installed from its pinned checkout; `orch-pipeline`: planner agent → TDD → reviewer agents |
 | E | A dynamic Workflow, headless | `claude -p` writing and running its own multi-agent workflow |
-| E2 | The same, interactive | a real terminal session driven by `expect` |
+| E2 | The same setup, interactive | a real terminal session driven by `expect`; each run writes its own workflow, and E2's had six phases where E's had five |
 | F | An agent team | a lead plus sim, UI and QA teammates (interactive; teams do not form under `-p`) |
 
 ## Results
@@ -26,11 +26,11 @@ Every contender got the same brief, its own empty git repository, and the same c
 | B | $2.33 | 14 min | 38 | no tests | no tests | ignored, not claimed |
 | C | $10.64 | 32 min | 13 | yes | only with setup the repo does not declare | honoured |
 | D | $2.66 | 14 min | 11 | yes | no | partial, stated accurately |
-| E | $1.21 | — | — | nothing was built | | |
+| E | $1.21 | 11 min | 0 | nothing was built | | |
 | E2 | ~$10 | 82 min | 84 | no tests | no tests | honoured after a warm-up |
 | F | ~$8 | 40 min | 36 | yes | no | partial, claimed as full |
 
-E2 and F costs are estimated from their transcripts with per-token rates fitted to the headless runs' own reported costs (within about 7%). "Tests catch" means a break-check: the line was broken on purpose and the contender's own suite had to go red.
+E2 and F costs are estimated from their transcripts with per-token rates fitted to the headless runs' own reported costs (within about 7%). "Tests catch" means a break-check: the line was broken on purpose and the contender's own suite had to go red. "No tests" means no committed test files, which the harness counts as files under a `test/`, `tests/` or `__tests__/` directory or named `*.test.*` or `*.spec.*`. B and E2 each committed a browser smoke script outside that pattern (`tools/check.mjs`, `tools/verify.mjs`) and no test command, so they count as having no tests.
 
 ## What it showed
 

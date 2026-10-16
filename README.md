@@ -4,7 +4,7 @@
 
 Launchpad was a control plane for hosting Odoo businesses: provision a tenant, give every branch its own staging server, let an AI agent turn a request into code on that branch, and promote it to production behind one human click. It was built at [Netlab](https://netlab.mx) between July and August 2026, almost entirely by Claude agents steered by one developer, [Juan Carlos Castrejón](https://github.com/JCastrejonE), and stopped deliberately in October 2026.
 
-This is a sanitized snapshot. It is kept because the record of how it was built is more useful than the product: 1,638 commits, 228 specs, 1,855 tests, and an unusually honest log of every mistake, which turned into a development model and a standalone tool.
+This is a sanitized snapshot. It is kept because the record of how it was built is more useful than the product: 1,638 commits, 228 specs, 1,909 tests (35 of them run only with `TEMPORAL_TEST=1`), and an unusually honest log of every mistake, which turned into a development model and a standalone tool.
 
 > Hosts, domains, people and customers have been replaced with placeholders (`example.com`, `203.0.113.x`, "the owner", "a teammate", `client-a`…). Where the code and docs say "the company", that is Netlab. Operations logs, the raw defect registry, run findings and most specs were removed. History starts fresh.
 
@@ -24,7 +24,7 @@ This is a sanitized snapshot. It is kept because the record of how it was built 
 - Auth.js sessions with OWNER, MEMBER and VIEWER roles, where all policy lives in one file (`apps/web/lib/capabilities.ts`) and an action can only record an actor it has authorized.
 - An append-only audit log of every effectful action, and an AES-256-GCM secret store for tenant credentials.
 
-**Stack:** TypeScript (strict), pnpm workspaces, Next.js, Temporal, Postgres with Drizzle, Docker and Traefik, the Claude Agent SDK. About 56k lines of source and 31k lines of tests.
+**Stack:** TypeScript (strict), pnpm workspaces, Next.js, Temporal, Postgres with Drizzle, Docker and Traefik, the Claude Agent SDK. About 57k lines of source and 31k lines of tests.
 
 ```
 apps/web                    Next.js control plane: projects, branches, releases, chat, gates
@@ -54,7 +54,7 @@ Every mistake made while building Launchpad was written down, with what it was a
 | Spec review | 1 defect |
 | **A unit test going red** | **0** |
 
-97% of product defects were introduced under an approved spec. The two largest families were invisible to the test suite by construction:
+97% of product defects were introduced under an approved spec. Six named families cover 173 of the 225 defects; after the largest, wrong assumptions in a plan (55), the next two were invisible to the test suite by construction:
 
 - **Instruments that confirm what their author expected (47).** Throwaway shell written to *observe* the system: a poll that could not say which state it was in, a grep that matched the wrong thing, an exit code read through a pipe. None of it was committed, so no test ever saw it.
 - **Code that was built, tested and never reached (35).** Most often a new optional parameter that a second caller never passed. A unit test calls the function directly, so the function is always reached in tests.
@@ -71,8 +71,8 @@ The only mechanisms that ever closed a recurring defect shape were compile-time:
 
 - **Odoo shipped the core idea itself.** Since April 2026 odoo.sh runs Claude Code inside the build environment and deploys to staging from its console. A self-built version would compete with the vendor's own platform.
 - **No external customer used it.** Every tenant was an internal test business, and no one but the owner ever drove it.
-- **The agent pipeline duplicated tools that already existed.** After its first hundred specs, the owner routed about six of every seven changes around it with Claude Code directly.
-- **It was expensive to keep correct.** Most defects were found only by running the live system, and a few reached production, one as a twelve-hour tenant outage.
+- **The agent pipeline duplicated tools that already existed.** After its first hundred specs, the owner routed most changes around it with Claude Code directly: 115 of the 129 later specs ran as Track 1, outside the pipeline.
+- **It was expensive to keep correct.** Most defects were found only by running the live system, and a few reached production, one as a twelve-hour tenant outage (2026-08-14: after a Docker daemon restart the six production tenant stacks did not come back, and nothing alerted; its write-up was among the run findings removed from this snapshot).
 
 The useful output was never going to be the hosting product. It was the evidence about how software built by AI agents actually fails, and what catches it.
 

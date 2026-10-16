@@ -88,7 +88,11 @@ back), and "gate green" is a regression floor, never evidence about appearance.
 separate runs. I read that as a prompt gap and shipped batching guidance to four
 role files. It changed nothing — 177 more turns, still exactly 1.00 — and a direct
 probe then showed both Opus and Sonnet emit one call per turn even when told bluntly
-to parallelise. It is a hard SDK limit.
+to parallelise. I then called it a hard SDK limit, and that was wrong too: parallel
+tool use is on by default, and a later trace that logged tool names showed the work
+itself was sequential, 22 of 24 calls stateful `Bash`, `Edit` or `Write`
+(`docs/AGENT-TOPOLOGY.md`, "Batching"). The role prompts in `agents/` still carry
+the "hard limit" sentence, as the agents saw it.
 
 Behavioural tendencies vary. An exact constant is a property of the system. Prove
 the mechanism before shipping a fix for it.

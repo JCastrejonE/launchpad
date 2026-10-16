@@ -24,7 +24,7 @@
 Three more facts:
 
 - **173 of 178 product defects (97%) were introduced under an approved spec.** Spec-first is fully in force and does not change whether a defect is introduced or caught.
-- **The two largest shapes are invisible to the current gate by construction.** *An instrument that confirms what its author expected* (47 defects) lives in throwaway shell inside tool calls, which no checked-in test ever sees. *A second caller or consumer never wired* (35 defects, including 17 optional-parameter cases) is exactly what a unit test with a fake cannot notice, because the test calls the function directly.
+- **The next two largest shapes, after wrong assumptions in a plan (55 defects, §4), are invisible to the current gate by construction.** *An instrument that confirms what its author expected* (47 defects) lives in throwaway shell inside tool calls, which no checked-in test ever sees. *A second caller or consumer never wired* (35 defects, including 17 optional-parameter cases) is exactly what a unit test with a fake cannot notice, because the test calls the function directly.
 - **The only mechanisms that demonstrably closed a recurring shape were compile-time** (a required union, a typed value). Not tests, not prose, not review.
 
 **What the record says about the current model:** it optimises the wrong stage. It spends its effort before code (specs, tracks, handoff logs, roughly 715k words of prose against 57k lines of code) and at the gate (tests that assert the call the code made), while every defect that mattered was caught by running the system afterwards, often by a user or an outage. The strength worth keeping is elsewhere: the repo *records* its failures honestly and specifically. That is the only reason this analysis is possible.
@@ -69,14 +69,14 @@ There are no specs. A change begins as a list of **claims**: sentences a user co
 Rules for a claim:
 
 - **It names an observable effect, never a call.** "Installs the module" is a claim; "calls `installTenantModules`" is not. This is the direct answer to the nine assert-the-call defects and to spec 0226, whose "built" items were all true and whose feature nothing could reach.
-- **Its verify command must be able to fail.** Before a claim counts, its check is broken on purpose and must go red (`breakcheck`). Four defects were caught this way; more importantly, five break attempts in one day were themselves wrong, which is why the break is done by a tool and not by hand.
+- **Its verify command must be able to fail.** Before a claim counts, its check is broken on purpose and must go red (`breakcheck`). Four defects were caught this way (three by hand-rolled breaks, a fourth on the first run of `scripts/break-check.sh`); more importantly, hand-rolled breaks failed three times in one day (one of the three twice), each time in the harness rather than the idea, which is why the break is done by a tool and not by hand.
 - **A claim that can only be checked live says so** (`kind: live`) and is checked live before the change is accepted. Not marked `(human)` and forgotten: 76 of the 225 defects could only be caught by a live system, so the live check is part of the definition of done, not an exemption from it.
 
 Why claims instead of specs: 97% of defects were introduced under a spec, and spec review caught one. The claim file keeps the one thing a spec did well, a written list of what "done" means, and drops the 20 sections around it. Writing a claim takes a minute. Writing the check takes longer, and that is where the time should go.
 
 ### 3.2 Wiring is proven by the type system, not by a test
 
-35 defects, the second-largest family, were code that was built, tested, and never reached. Tests cannot catch this: a test calls the function, so the function is reached. The only mechanisms in the record that closed instances of this shape were compile-time.
+35 defects, the third-largest family, were code that was built, tested, and never reached. Tests cannot catch this: a test calls the function, so the function is reached. The only mechanisms in the record that closed instances of this shape were compile-time.
 
 So:
 
@@ -86,7 +86,7 @@ So:
 
 ### 3.3 Instruments are code
 
-47 defects, the largest family, were in the throwaway shell a session wrote to *observe* the system: a poll that could not say which state it was in, a grep that matched chunk ids as prices, a `docker compose up` in the wrong directory that built an empty stack, a break harness that restored the wrong bytes. None of it was committed; none of it could be reviewed or reused; 36 of the 47 were caught only when the author noticed a conclusion was wrong.
+47 defects, the second-largest family, were in the throwaway shell a session wrote to *observe* the system: a poll that could not say which state it was in, a grep that matched chunk ids as prices, a `docker compose up` in the wrong directory that built an empty stack, a break harness that restored the wrong bytes. None of it was committed; none of it could be reviewed or reused; 36 of the 47 were caught only when the author noticed a conclusion was wrong.
 
 Rule: **an observation that will be made twice is a script in `scripts/`, with a known-positive test.** A poll prints its state on every line. A grep is run against an input known to match before its negative means anything. A deploy check asserts the end state under the identity that runs the code. This is already half-written in `VERIFICATION.md` #14; the model makes it a lint (`lint-instruments` exists) and a habit: the session's *first* move when it needs to observe something is to look for the script.
 
@@ -103,11 +103,11 @@ Latency: a journey suite against a real stack is minutes, not seconds. That is t
 
 ### 3.5 Long sessions are made safe by mechanisms, not by memory
 
-The current rulebook assumes an agent remembers 15 verification rules across context compaction. The record shows it does not: the pipe-exit-code mistake was made five times, the optional-parameter mistake seven, each after the rule was written down.
+The current rulebook assumes an agent remembers 15 verification rules across context compaction. The record shows it does not: on one day (2026-08-19) the pipe-exit-code mistake was made four times and the optional-parameter mistake seven, each after its rule was written down.
 
 - **A session commits at every green claim.** Losing a session loses one claim, not a day. Undo is `git revert` of one small commit, which is the cheapest guarantee there is and the one every fast shop relies on.
 - **A Stop hook refuses to end a session while the gate is red or a claim is unverified.** Claude Code hooks are deterministic; CLAUDE.md is advisory (Anthropic's own words). Today `.claude/` has no hooks at all.
-- **A pre-commit hook requires a green gate.** Three red gates were pushed in one day because the check was chained with `;` instead of `&&`.
+- **A pre-commit hook requires a green gate.** Three red gates were pushed in one day because the gate read `grep`'s exit status through a pipe (`VERIFICATION.md` #8), and a later push went out on a red gate because it was chained with `;` instead of `&&`.
 - **Session state is one file, `STATE.md`, rewritten rather than appended:** the goal, the claims and their status, the next step, anything surprising. It replaces the handoff log, which grew without bound and was read by nobody: the language rule was in a handoff before it was in a prompt, and the coder still committed in English.
 - **The author never grades itself.** At a milestone, a fresh-context reviewer with a browser checks the claims against the running system. In the bake-off, this is what found the real bugs in every setup that had it, and the record shows the author's report is the least reliable input: "Codex falsely claims to have completed a task; mitigation: user transparency."
 - **Prompts are portable.** A rule that applies to every session lives in one place and is enforced by a hook or a lint; it is not repeated across five agent prompts (five defects came from a rule present in one prompt and absent from its siblings).
@@ -121,7 +121,7 @@ One human gate remains: **promote to production**, the irreversible act. Everyth
 - Specs, tracks, `## Progress` checklists, handoff logs, the `(human)` marker as an exemption.
 - `PENDING.md` as a hand-maintained ledger. Open claims *are* the ledger; a failing claim is an open item.
 - The 15 numbered verification rules as prose. Each one either becomes a lint, a hook, a type, or a claim, or it is an anecdote and goes to `docs/`.
-- Any prompt line that describes the harness rather than the task ("one tool call per turn" cost the bake-off run every parallel call it could have made).
+- Any prompt line that describes the harness rather than the task (in the setup bake-off, the run on these prompts made 0 parallel tool-call batches against 12 for plain Claude Code, because its prompt said "one tool call per turn"; on Launchpad's own sequential work this cost little, see `docs/AGENT-TOPOLOGY.md`).
 
 ## 4. How this would have changed the record
 
@@ -134,11 +134,13 @@ One human gate remains: **promote to production**, the irreversible act. Everyth
 | Environment / deploy drift | 19 | `kind: live` claims run under the deploying identity; end state asserted (`node --version` on the box, the row in the table) |
 | Record says done before the world is | 8 | a status is written by the check that observed the state, never by the step that requested it |
 
+The six families cover 173 of the 225 defects; the other 52 are not broken down by family here.
+
 Two things this model does not fix. **Wrong assumptions about the world** (Odoo installs modules only at DB init; Actions billing locked; a live ERP on a "disposable" box) are found by running the real thing, and the model only guarantees that this happens before merge rather than after. **Judgement calls** (what to build, whether the page is beautiful, whether a customer's data may leave a box) stay with a person, and the model's contribution is to stop asking that person to also be the test suite.
 
 ## 5. Cost, and how to know if it is right
 
-**Cost.** Writing a check for every claim is slower than writing a sentence. Journey tests need a real stack, which means CI minutes and a box. Making parameters required makes some refactors noisier. These are the same costs every fast shop pays; the record says the alternative costs more, in 12-hour outages and seven-time repeat defects.
+**Cost.** Writing a check for every claim is slower than writing a sentence. Journey tests need a real stack, which means CI minutes and a box. Making parameters required makes some refactors noisier. These are the same costs every fast shop pays; the record says the alternative costs more, in a 12-hour outage and seven-time repeat defects.
 
 **Where it could be wrong.** Journey tests on infrastructure can be flaky, and a flaky gate is ignored. The claim file could grow ceremony of its own. Compile-time wiring only helps in typed code and does not help for shell or SQL.
 

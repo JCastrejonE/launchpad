@@ -4,10 +4,10 @@
  *
  * docs/VERIFICATION.md #14: every rule in this repo is about a check inside the
  * product; none covered the throwaway psql/curl/grep/wait-loop commands a session
- * writes to OBSERVE the system. Those are unreviewed and invisible, and on
- * 2026-08-19 they cost a wrong conclusion about prices, two silent deploys, a
- * 52-minute wait for a state that could not arrive, and four separate misreadings
- * of an exit code.
+ * writes to OBSERVE the system. Those are unreviewed and invisible: on
+ * 2026-08-13 they cost a wrong conclusion about prices, two silent deploys and a
+ * 52-minute wait for a state that could not arrive, and on 2026-08-19 four
+ * separate misreadings of an exit code.
  *
  * SCOPE, and the honest half of this tool: it can only see instruments that are
  * COMMITTED, i.e. `scripts/**`. Six of the seven registry rows in this family were

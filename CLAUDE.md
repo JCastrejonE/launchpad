@@ -101,7 +101,8 @@ unchecked becomes boilerplate, and boilerplate dilutes the rules that were paid 
    nearly shipped with the entire base CSS deleted, fully green).
 5. **A constant with zero variance is a constraint, not a habit.** Behaviour
    varies; an exact constant is a limit of the system. Do not ship a prompt fix
-   for it without proving the mechanism first (0106).
+   for it without proving the mechanism first (0106; `docs/AGENT-TOPOLOGY.md` later traced
+   the mechanism to the workload itself).
 6. **Verify that a config or prompt change was delivered** — via git ancestry into
    the tree that ran — not by searching a log that may never record it (0106).
 7. **A generated directory outlives what generated it.** `dist/` kept deleted tests

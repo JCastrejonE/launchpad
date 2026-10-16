@@ -25,6 +25,12 @@ Two comparable full runs, 237 turns total.
 | coder-4 | 382s | 282s | 37s | 74% |
 | **total** | **2241s (37 min)** | **1545s (26 min)** | **308s (5 min)** | **69%** |
 
+The tools column adds up to 307s; the 308s total is the figure spec 0106 recorded, and the
+raw transcripts behind it are not in this snapshot, so the one-second gap (most likely rounding)
+cannot be rechecked here. The role prompts in `agents/` quote inference as "69–80%" of a
+session: 69% is this table's total, and no measurement behind the 80% upper bound
+is recorded (the highest single session above is 75%).
+
 **Turn count, not tool speed, is what makes a session slow.**
 
 ### Tool-call batching — the finding
@@ -33,17 +39,23 @@ Two comparable full runs, 237 turns total.
 |---|---|---|---|
 | 0097 | `claude-sonnet-5` | 112 | **1.00** |
 | 0105 | `claude-opus-4-8` | 125 | **1.00** |
-
 | 0107 | `claude-opus-4-8` | 177 | **1.00** |
 
 Zero of **414** turns issued two tool calls — including spec 0107, run *after*
-prompt guidance told the agents to batch. A direct probe then confirmed the cause:
+prompt guidance told the agents to batch. A direct probe gave the same result:
 a session instructed *"issue all three Read calls in a SINGLE assistant turn, in
 parallel"* returns `{1: 3}` on **both** Opus and Sonnet.
 
-**The Agent SDK does not emit parallel tool calls in this configuration.** This is
-a hard constraint, not a prompt gap — do not spend effort trying to prompt around
-it. (Spec 0106 originally concluded the opposite; it is corrected there.)
+This section first concluded that the Agent SDK cannot emit parallel tool calls, a
+hard constraint that no prompt could change. **That cause was wrong**, and is corrected
+in `docs/AGENT-TOPOLOGY.md` ("Batching: available, on by default, and nothing to
+spend it on"): parallel tool use is on by default and nothing in the stack turns it
+off, and a later trace on a real spec found 22 of 24 calls were stateful `Bash`,
+`Edit` or `Write` calls that depend on the one before, so there was little to batch.
+The measurement stands.
+The role prompts in `agents/` (initializer, coder, fixer) still carry the earlier
+sentence, "This harness emits exactly ONE tool call per turn … Batching is not
+available to you"; they are kept as the agents saw them.
 
 The available lever is **fewer tool calls total**: one scripted multi-edit instead
 of a queue of `Edit` calls, one wide read instead of several narrow ones. Spec 0107
